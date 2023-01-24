@@ -1,0 +1,55 @@
+version: "3.9"
+services:
+  keycloak-postgres:
+    image: library/postgres:${KC_POSTGRES_IMAGE_TAG:-14}
+    container_name: ${POSTGRES_CONTAINER_NAME:-keycloak-postgres}
+    ports:
+      - "5432:5432"
+    restart: on-failure
+    environment:
+      POSTGRES_USER: ${KEYCLOAK_POSTGRES_USERNAME:-postgres}
+      POSTGRES_PASSWORD: ${KEYCLOAK_POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${KEYCLOAK_POSTGRES_DB:-postgres}
+    healthcheck:
+      test: pg_isready -d postgres
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+    #This configuration useful in testing scenarios(simulate low-resource conditions)
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:latest
+    container_name: ${KEYCLOAK_CONTAINER_NAME:-keycloak}
+    ports:
+      - "8080:8080"
+    depends_on:
+      keycloak-postgres:
+        condition: service_healthy
+    #Keycloak accepts requests from any hostname, regardless of whether it matches the hostname of the server it's running on(--hostname-strict false)
+    #Keycloak listens and accepts incoming HTTP requests on port 8080(--http-enabled true)
+    #Keycloak acts as a reverse proxy in front of your applications and services, and it is responsible for handling authentication and authorization for all incoming requests(--proxy edge)
+    command:
+      - start --auto-build --db postgres  --hostname-strict false --proxy edge --http-enabled true --import-realm
+    environment:
+      KC_DB_URL: jdbc:postgresql://keycloak-postgres:5432/${KEYCLOAK_POSTGRES_DB:-postgres}
+      KC_DB_USERNAME: ${KEYCLOAK_POSTGRES_USERNAME:-postgres}
+      KC_DB_PASSWORD: ${KEYCLOAK_POSTGRES_PASSWORD:-postgres}
+      KC_DB_SCHEMA: public
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN:-admin}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin}
+    # Import your local realm in Keycloak server
+    #volumes:
+    #  - type: bind
+    #    source: ./realm-export.json
+    #    target: /opt/keycloak/data/import/realm-export.json
+    healthcheck:
+      test: ["CMD", " curl", "-f", "http://0.0.0.0:8080/realms/master"]
+      start_period: 10s
+      interval: 30s
+      timeout: 5s
+      retries: 3
