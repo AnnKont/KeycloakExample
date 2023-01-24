@@ -26,6 +26,7 @@ curl --location --request POST 'http://localhost:8080/realms/demo/protocol/openi
 --data-urlencode 'grant_type=client_credentials'
 ```
 It is requesting an access token from the Keycloak server using the client credentials flow. The client_id, client_secret and grant_type are required parameters(**_client_id_**=name of the client you created in step 3, **_client_secret_**=secret you configured for the client in the Keycloak admin console). The "_demo_" in the URL should be replaced with the name of the realm you created in step 2.
+
 2) Once you have received an access token from the Keycloak server in step 5, you can use this token to test your application:
 ```commandline
 curl --location --request GET 'http://localhost:8081/api/me' \
