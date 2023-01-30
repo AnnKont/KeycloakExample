@@ -1,0 +1,24 @@
+name: Application CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        java-version: [ 18-ea ]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      - name: Setup JDK
+        uses: actions/setup-java@v3
+        with:
+          java-version: ${{ matrix.java-version }}
+          distribution: 'zulu'
+      - name: Build, test, and generate reports
+        run: mvn clean install test surefire-report:report
